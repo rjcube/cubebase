@@ -1,4 +1,4 @@
-package base
+package cubebase
 
 import (
 	"github.com/gin-gonic/gin"
