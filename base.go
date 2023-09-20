@@ -7,9 +7,16 @@ import (
 
 // Response 统一返回结构
 type Response struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
+}
+
+type Page struct {
+	Data            []any `json:"data"`
+	Draw            any   `json:"draw"`
+	RecordsTotal    int64 `json:"recordsTotal"`
+	RecordsFiltered int64 `json:"recordsFiltered"`
 }
 
 // CubeResponse 统一返回结构
