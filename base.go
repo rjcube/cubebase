@@ -13,10 +13,9 @@ type Response struct {
 }
 
 type Page struct {
-	Data            []any `json:"data"`
-	Draw            any   `json:"draw"`
-	RecordsTotal    int64 `json:"recordsTotal"`
-	RecordsFiltered int64 `json:"recordsFiltered"`
+	Data  []any `json:"data"`
+	Draw  any   `json:"draw"`
+	Total int64 `json:"total"`
 }
 
 // CubeResponse 统一返回结构
