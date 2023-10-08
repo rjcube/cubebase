@@ -50,11 +50,3 @@ func CubeResponseErrorForServerErr(c *gin.Context, message string) {
 		Data:    nil,
 	})
 }
-
-type CubeError struct {
-	Msg string
-}
-
-func (e *CubeError) Error() string {
-	return e.Msg
-}
