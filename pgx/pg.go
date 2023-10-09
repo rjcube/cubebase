@@ -689,15 +689,15 @@ func (c ConnSymbol) String() string {
 type Sort int
 
 const (
-	desc Sort = iota
-	asc
+	Desc Sort = iota
+	Asc
 )
 
 func (s Sort) String() string {
 	switch s {
-	case desc:
+	case Desc:
 		return " %s desc "
-	case asc:
+	case Asc:
 		return " %s asc "
 	default:
 		return "Unknown"
