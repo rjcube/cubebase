@@ -12,10 +12,10 @@ type Response struct {
 	Data    any    `json:"data"`
 }
 
-type Page struct {
-	Data  []any `json:"data"`
-	Draw  any   `json:"draw"`
-	Total int64 `json:"total"`
+type PageVO struct {
+	List  []interface{} `json:"data"`
+	Draw  interface{}   `json:"draw"`
+	Total int64         `json:"total"`
 }
 
 // CubeResponse 统一返回结构
