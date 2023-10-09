@@ -50,3 +50,31 @@ func CubeResponseErrorForServerErr(c *gin.Context, message string) {
 		Data:    nil,
 	})
 }
+
+type PageForm struct {
+	PageIndex int64 `json:"pageIndex" binding:"required" label:"分页页码"`
+	PageSize  int64 `json:"pageSize" binding:"required" label:"每页大小"`
+	//StartRow  int64 `json:"startRow"`
+}
+
+func (p *PageForm) GetPageIndex() int64 {
+	if 1 > p.PageIndex {
+		return 1
+	}
+	return p.PageIndex
+}
+
+func (p *PageForm) GetPageSize() int64 {
+	if 1 > p.PageSize {
+		return 1
+	} else if 2000 < p.PageSize {
+		return 2000
+	}
+	return p.PageSize
+}
+
+func (p *PageForm) GetStartRow() int64 {
+	pi := p.GetPageIndex()
+	ps := p.PageSize
+	return (pi - 1) * ps
+}

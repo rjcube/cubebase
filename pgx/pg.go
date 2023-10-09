@@ -232,6 +232,9 @@ func QueryAll[T interface{}](c *gin.Context, bp BizParam, po T) ([]T, error) {
 	buffer.WriteString(" ")
 	buffer.WriteString(bp.getOrderBy())
 
+	buffer.WriteString(" ")
+	buffer.WriteString(bp.getPage())
+
 	fmt.Println("查询数据SQL为：" + buffer.String())
 
 	rows, err := cube.Db.NamedQuery(buffer.String(), condVal)
@@ -297,7 +300,7 @@ type BizParam struct {
 	condition []paramCondition
 	ands      []BizParam
 	ors       []BizParam
-	pageLimit *pageLimit
+	pageLimit *cubebase.PageForm
 	orderBys  []orderBy
 }
 
@@ -414,7 +417,7 @@ func (bp BizParam) Or(and BizParam) BizParam {
 }
 
 func (bp BizParam) Page(pageIndex int64, pageSize int64) BizParam {
-	bp.pageLimit = &pageLimit{
+	bp.pageLimit = &cubebase.PageForm{
 		PageIndex: pageIndex,
 		PageSize:  pageSize,
 	}
@@ -576,6 +579,19 @@ func (bp BizParam) getOrderBy() string {
 	return buffer.String()
 }
 
+func (bp BizParam) getPage() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("")
+	pl := bp.pageLimit
+	if nil != pl {
+		buffer.WriteString(" limit ")
+		buffer.WriteString(strconv.FormatInt(pl.PageSize, 10))
+		buffer.WriteString(" offset ")
+		buffer.WriteString(strconv.FormatInt(pl.GetStartRow(), 10))
+	}
+	return buffer.String()
+}
+
 func handleBracketCondition(bps []BizParam, cs ConnSymbol, flag bool, buffer bytes.Buffer, condVal map[string]interface{}) {
 	if nil != bps && len(bps) != 0 {
 		for _, bp := range bps {
@@ -608,11 +624,6 @@ func (bp BizParam) addCond(fn string, symbol Symbol, val interface{}) BizParam {
 type between struct {
 	From interface{}
 	To   interface{}
-}
-
-type pageLimit struct {
-	PageIndex int64
-	PageSize  int64
 }
 
 type orderBy struct {
