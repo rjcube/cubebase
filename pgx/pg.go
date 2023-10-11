@@ -316,6 +316,9 @@ func handleInsertOrUpdateDate(po interface{}) (map[string]interface{}, error) {
 	}
 
 	for k, v := range m {
+		if nil == v {
+			continue
+		}
 		vt := reflect.TypeOf(v)
 		tName := vt.Name()
 		if tName == "Int64Array" || tName == "*Int64Array" || tName == "StringArray" || tName == "*StringArray" {
