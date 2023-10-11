@@ -305,13 +305,14 @@ type BizParam struct {
 }
 
 func NewBizParam() BizParam {
-	return BizParam{
+	bp := BizParam{
 		condition: nil,
 		ands:      nil,
 		ors:       nil,
 		pageLimit: nil,
 		orderBys:  nil,
 	}
+	return bp.Equal("is_delete", true)
 }
 
 func (bp BizParam) Equal(fn string, val interface{}) BizParam {
