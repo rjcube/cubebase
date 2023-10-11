@@ -307,7 +307,7 @@ func QueryById[T interface{}](c *gin.Context, po T) (*T, error) {
 }
 
 func handleInsertOrUpdateDate(po interface{}) (map[string]interface{}, error) {
-	var m map[string]interface{}
+	m := make(map[string]interface{})
 	poType := reflect.TypeOf(po)
 	poValue := reflect.ValueOf(po)
 	if poType.Kind() == reflect.Ptr {
