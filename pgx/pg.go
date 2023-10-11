@@ -19,7 +19,7 @@ import (
 func Insert(c *gin.Context, po interface{}) (int64, error) {
 	userInfo, _ := c.MustGet("userInfo").(*cubebase.UserInfo)
 	userId := fmt.Sprintf("%d", userInfo.ID)
-	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
+	tx, _ := c.MustGet("tx").(*sqlx.Tx)
 
 	sn, pfs := getStructDbFields(po)
 
@@ -61,13 +61,18 @@ func Insert(c *gin.Context, po interface{}) (int64, error) {
 	}
 	buffer.WriteString(") RETURNING id")
 
-	rows, err := cube.Db.NamedQuery(buffer.String(), m)
+	rows, err := tx.NamedQuery(buffer.String(), m)
 	if err != nil {
 		fmt.Println(err.Error())
 		return 0, &CubePgExecError{Msg: "保存数据失败"}
 	}
 
 	id := getInsertID(rows)
+
+	err = rows.Close()
+	if err != nil {
+		return 0, &CubePgExecError{Msg: "保存数据失败"}
+	}
 
 	return id, nil
 }
@@ -77,7 +82,7 @@ func Insert(c *gin.Context, po interface{}) (int64, error) {
 func UpdateById(c *gin.Context, po interface{}) error {
 	userInfo, _ := c.MustGet("userInfo").(*cubebase.UserInfo)
 	userId := fmt.Sprintf("%d", userInfo.ID)
-	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
+	tx, _ := c.MustGet("tx").(*sqlx.Tx)
 
 	m, err := handleInsertOrUpdateDate(po)
 	if nil != err {
@@ -88,7 +93,7 @@ func UpdateById(c *gin.Context, po interface{}) error {
 	montageUpdate(&buffer, userId, po)
 	buffer.WriteString(" AND id = :id")
 
-	_, err = cube.Db.NamedExec(buffer.String(), m)
+	_, err = tx.NamedExec(buffer.String(), m)
 	if err != nil {
 		fmt.Println(err.Error())
 		return &CubePgExecError{Msg: "修改数据失败"}
@@ -108,14 +113,14 @@ func UpdateByCondition(c *gin.Context, bp BizParam, po interface{}) error {
 
 	userInfo, _ := c.MustGet("userInfo").(*cubebase.UserInfo)
 	userId := fmt.Sprintf("%d", userInfo.ID)
-	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
+	tx, _ := c.MustGet("tx").(*sqlx.Tx)
 
 	var buffer bytes.Buffer
 	montageUpdate(&buffer, userId, po)
 	buffer.WriteString(" and ")
 	buffer.WriteString(condition)
 
-	_, err := cube.Db.NamedExec(buffer.String(), condVal)
+	_, err := tx.NamedExec(buffer.String(), condVal)
 	if err != nil {
 		fmt.Println(err.Error())
 		return &CubePgExecError{Msg: "修改数据失败"}
@@ -130,7 +135,7 @@ func DeleteById(c *gin.Context, po interface{}) error {
 
 	userInfo, _ := c.MustGet("userInfo").(*cubebase.UserInfo)
 	userId := fmt.Sprintf("%d", userInfo.ID)
-	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
+	tx, _ := c.MustGet("tx").(*sqlx.Tx)
 
 	sn, _ := getStructDbFields(po)
 
@@ -142,7 +147,7 @@ func DeleteById(c *gin.Context, po interface{}) error {
 	buffer.WriteString(" WHERE is_delete = false AND id = ")
 	buffer.WriteString(":id")
 
-	_, err := cube.Db.NamedExec(buffer.String(), po)
+	_, err := tx.NamedExec(buffer.String(), po)
 	if err != nil {
 		fmt.Println(err.Error())
 		return &CubePgExecError{Msg: "修改数据失败"}
@@ -157,7 +162,7 @@ func DeleteByCondition(c *gin.Context, bp BizParam, po interface{}) error {
 
 	userInfo, _ := c.MustGet("userInfo").(*cubebase.UserInfo)
 	userId := fmt.Sprintf("%d", userInfo.ID)
-	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
+	tx, _ := c.MustGet("tx").(*sqlx.Tx)
 
 	sn, _ := getStructDbFields(po)
 
@@ -174,7 +179,7 @@ func DeleteByCondition(c *gin.Context, bp BizParam, po interface{}) error {
 	buffer.WriteString(" where is_delete = false and ")
 	buffer.WriteString(condition)
 
-	_, err := cube.Db.NamedExec(buffer.String(), condVal)
+	_, err := tx.NamedExec(buffer.String(), condVal)
 	if err != nil {
 		return &CubePgExecError{Msg: "删除数据失败"}
 	}
@@ -183,7 +188,7 @@ func DeleteByCondition(c *gin.Context, bp BizParam, po interface{}) error {
 }
 
 func CountAll[T interface{}](c *gin.Context, bp BizParam, po T) (int64, error) {
-	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
+	tx, _ := c.MustGet("tx").(*sqlx.Tx)
 	sn, _ := getStructDbFields(po)
 
 	var buffer bytes.Buffer
@@ -200,7 +205,7 @@ func CountAll[T interface{}](c *gin.Context, bp BizParam, po T) (int64, error) {
 
 	fmt.Println("待执行的SQL语句内容为：" + buffer.String())
 
-	rows, err := cube.Db.NamedQuery(buffer.String(), condVal)
+	rows, err := tx.NamedQuery(buffer.String(), condVal)
 	if nil != err {
 		errMsg := err.Error()
 		fmt.Println(errMsg)
@@ -216,6 +221,10 @@ func CountAll[T interface{}](c *gin.Context, bp BizParam, po T) (int64, error) {
 		}
 		break
 	}
+	err = rows.Close()
+	if err != nil {
+		return 0, &CubePgExecError{Msg: "查询统计数据失败"}
+	}
 	if result.Count == -1 {
 		return -1, &CubePgExecError{Msg: "查询统计数据失败"}
 	}
@@ -227,7 +236,7 @@ func CountAll[T interface{}](c *gin.Context, bp BizParam, po T) (int64, error) {
 // 本方法依赖于gin线程中的cube对象
 func QueryAll[T interface{}](c *gin.Context, bp BizParam, po T) ([]T, error) {
 
-	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
+	tx, _ := c.MustGet("tx").(*sqlx.Tx)
 
 	var buffer bytes.Buffer
 
@@ -247,7 +256,7 @@ func QueryAll[T interface{}](c *gin.Context, bp BizParam, po T) ([]T, error) {
 
 	fmt.Println("查询数据SQL为：" + buffer.String())
 
-	rows, err := cube.Db.NamedQuery(buffer.String(), condVal)
+	rows, err := tx.NamedQuery(buffer.String(), condVal)
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil, &CubePgExecError{Msg: "查询数据失败"}
@@ -260,6 +269,10 @@ func QueryAll[T interface{}](c *gin.Context, bp BizParam, po T) ([]T, error) {
 
 		}
 		ts = append(ts, t)
+	}
+	err = rows.Close()
+	if err != nil {
+		return nil, &CubePgExecError{Msg: "查询数据失败"}
 	}
 
 	return ts, nil
@@ -282,7 +295,7 @@ func QueryOne[T interface{}](c *gin.Context, bp BizParam, po T) (*T, error) {
 }
 
 func QueryById[T interface{}](c *gin.Context, po T) (*T, error) {
-	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
+	tx, _ := c.MustGet("tx").(*sqlx.Tx)
 
 	var buffer bytes.Buffer
 
@@ -290,10 +303,10 @@ func QueryById[T interface{}](c *gin.Context, po T) (*T, error) {
 
 	buffer.WriteString(" and id = :id")
 
-	rows, err := cube.Db.NamedQuery(buffer.String(), po)
+	rows, err := tx.NamedQuery(buffer.String(), po)
 	if err != nil {
 		fmt.Println(err.Error())
-		return nil, &CubePgExecError{Msg: "修改数据失败"}
+		return nil, &CubePgExecError{Msg: "查询数据失败"}
 	}
 
 	var t T
@@ -301,6 +314,10 @@ func QueryById[T interface{}](c *gin.Context, po T) (*T, error) {
 		if err := rows.StructScan(&t); err != nil {
 
 		}
+	}
+	err = rows.Close()
+	if err != nil {
+		return nil, &CubePgExecError{Msg: "查询数据失败"}
 	}
 
 	return &t, nil
