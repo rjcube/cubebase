@@ -314,7 +314,7 @@ func NewBizParamByNilSkip(nilConditionSkip bool) BizParam {
 		orderBys:         nil,
 		nilConditionSkip: nilConditionSkip,
 	}
-	return bp.Equal("is_delete", true)
+	return bp
 }
 
 func NewBizParam() BizParam {
