@@ -313,6 +313,9 @@ func handleInsertOrUpdateDate(po interface{}) (map[string]interface{}, error) {
 	if poType.Kind() == reflect.Ptr {
 		poType = poType.Elem()
 	}
+	if poValue.Kind() == reflect.Ptr {
+		poValue = poValue.Elem()
+	}
 	for i := 0; i < poType.NumField(); i++ {
 		f := poType.Field(i)
 		k := f.Name
