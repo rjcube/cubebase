@@ -2,7 +2,6 @@ package pgx
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -308,22 +307,26 @@ func QueryById[T interface{}](c *gin.Context, po T) (*T, error) {
 }
 
 func handleInsertOrUpdateDate(po interface{}) (map[string]interface{}, error) {
-	poBytes, _ := json.Marshal(po)
 	var m map[string]interface{}
-	err := json.Unmarshal(poBytes, &m)
-	if err != nil {
-		return m, &CubePgExecError{Msg: "处理保存数据失败"}
+	poType := reflect.TypeOf(po)
+	poValue := reflect.ValueOf(po)
+	if poType.Kind() == reflect.Ptr {
+		poType = poType.Elem()
 	}
-
-	for k, v := range m {
-		if nil == v {
-			continue
+	for i := 0; i < poType.NumField(); i++ {
+		f := poType.Field(i)
+		k := f.Name
+		dbTag := f.Tag.Get("db")
+		if "" != dbTag {
+			k = dbTag
 		}
+		v := poValue.Field(i).Interface()
 		vt := reflect.TypeOf(v)
 		tName := vt.Name()
 		if tName == "Int64Array" || tName == "*Int64Array" || tName == "StringArray" || tName == "*StringArray" {
-			m[k] = pq.Array(v)
+			v = pq.Array(v)
 		}
+		m[k] = v
 	}
 	return m, nil
 }
