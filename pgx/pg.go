@@ -297,22 +297,28 @@ func QueryById[T interface{}](c *gin.Context, po T) (*T, error) {
 }
 
 type BizParam struct {
-	condition []paramCondition
-	ands      []BizParam
-	ors       []BizParam
-	pageLimit *cubebase.PageForm
-	orderBys  []orderBy
+	condition        []paramCondition
+	ands             []BizParam
+	ors              []BizParam
+	pageLimit        *cubebase.PageForm
+	orderBys         []orderBy
+	nilConditionSkip bool
+}
+
+func NewBizParamByNilSkip(nilConditionSkip bool) BizParam {
+	bp := BizParam{
+		condition:        nil,
+		ands:             nil,
+		ors:              nil,
+		pageLimit:        nil,
+		orderBys:         nil,
+		nilConditionSkip: nilConditionSkip,
+	}
+	return bp.Equal("is_delete", true)
 }
 
 func NewBizParam() BizParam {
-	bp := BizParam{
-		condition: nil,
-		ands:      nil,
-		ors:       nil,
-		pageLimit: nil,
-		orderBys:  nil,
-	}
-	return bp.Equal("is_delete", true)
+	return NewBizParamByNilSkip(true)
 }
 
 func (bp BizParam) Equal(fn string, val interface{}) BizParam {
@@ -613,6 +619,9 @@ func handleBracketCondition(bps []BizParam, cs ConnSymbol, flag bool, buffer byt
 }
 
 func (bp BizParam) addCond(fn string, symbol Symbol, val interface{}) BizParam {
+	if bp.nilConditionSkip && nil == val && (symbol != isNull && symbol != isNotNull && symbol != isEmpty && symbol != isNotEmpty) {
+		return bp
+	}
 	cond := paramCondition{
 		Colum:  fn,
 		Symbol: symbol,
