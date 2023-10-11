@@ -322,58 +322,100 @@ func NewBizParam() BizParam {
 }
 
 func (bp BizParam) Equal(fn string, val interface{}) BizParam {
+	if bp.nilConditionSkip && nil == val {
+		return bp
+	}
 	return bp.addCond(fn, equal, val)
 }
 
 func (bp BizParam) NotEqual(fn string, val interface{}) BizParam {
+	if bp.nilConditionSkip && nil == val {
+		return bp
+	}
 	return bp.addCond(fn, notEqual, val)
 }
 
 func (bp BizParam) GreaterThan(fn string, val interface{}) BizParam {
+	if bp.nilConditionSkip && nil == val {
+		return bp
+	}
 	return bp.addCond(fn, greaterThan, val)
 }
 
 func (bp BizParam) GreaterThanOrEqual(fn string, val interface{}) BizParam {
+	if bp.nilConditionSkip && nil == val {
+		return bp
+	}
 	return bp.addCond(fn, greaterThanOrEqual, val)
 }
 
 func (bp BizParam) LessThan(fn string, val interface{}) BizParam {
+	if bp.nilConditionSkip && nil == val {
+		return bp
+	}
 	return bp.addCond(fn, lessThan, val)
 }
 
 func (bp BizParam) LessThanOrEqual(fn string, val interface{}) BizParam {
+	if bp.nilConditionSkip && nil == val {
+		return bp
+	}
 	return bp.addCond(fn, lessThanOrEqual, val)
 }
 
 func (bp BizParam) In(fn string, val []interface{}) BizParam {
+	if bp.nilConditionSkip && (nil == val || 0 == len(val)) {
+		return bp
+	}
 	return bp.addCond(fn, in, pq.Array(val))
 }
 
 func (bp BizParam) NotIn(fn string, val []interface{}) BizParam {
+	if bp.nilConditionSkip && (nil == val || 0 == len(val)) {
+		return bp
+	}
 	return bp.addCond(fn, notIn, pq.Array(val))
 }
 
-func (bp BizParam) Like(fn string, val string) BizParam {
+func (bp BizParam) Like(fn string, val *string) BizParam {
+	if bp.nilConditionSkip && (nil == val || "" == *val) {
+		return bp
+	}
 	return bp.addCond(fn, like, val)
 }
 
-func (bp BizParam) LikeLeft(fn string, val string) BizParam {
+func (bp BizParam) LikeLeft(fn string, val *string) BizParam {
+	if bp.nilConditionSkip && (nil == val || "" == *val) {
+		return bp
+	}
 	return bp.addCond(fn, likeLeft, val)
 }
 
-func (bp BizParam) LikeRight(fn string, val string) BizParam {
+func (bp BizParam) LikeRight(fn string, val *string) BizParam {
+	if bp.nilConditionSkip && (nil == val || "" == *val) {
+		return bp
+	}
 	return bp.addCond(fn, likeRight, val)
 }
 
-func (bp BizParam) NotLike(fn string, val string) BizParam {
+func (bp BizParam) NotLike(fn string, val *string) BizParam {
+	if bp.nilConditionSkip && (nil == val || "" == *val) {
+		return bp
+	}
 	return bp.addCond(fn, notLike, val)
 }
 
-func (bp BizParam) NotLikeLeft(fn string, val string) BizParam {
+func (bp BizParam) NotLikeLeft(fn string, val *string) BizParam {
+	if bp.nilConditionSkip && (nil == val || "" == *val) {
+		return bp
+	}
 	return bp.addCond(fn, notLikeLeft, val)
 }
 
-func (bp BizParam) NotLikeRight(fn string, val string) BizParam {
+func (bp BizParam) NotLikeRight(fn string, val *string) BizParam {
+	if bp.nilConditionSkip && (nil == val || "" == *val) {
+		return bp
+	}
 	return bp.addCond(fn, notLikeRight, val)
 }
 
@@ -394,18 +436,30 @@ func (bp BizParam) IsNotEmpty(fn string) BizParam {
 }
 
 func (bp BizParam) Contain(fn string, val []interface{}) BizParam {
+	if bp.nilConditionSkip && (nil == val || 0 == len(val)) {
+		return bp
+	}
 	return bp.addCond(fn, contain, pq.Array(val))
 }
 
 func (bp BizParam) ContainAny(fn string, val []interface{}) BizParam {
+	if bp.nilConditionSkip && (nil == val || 0 == len(val)) {
+		return bp
+	}
 	return bp.addCond(fn, containAny, pq.Array(val))
 }
 
 func (bp BizParam) NotContain(fn string, val []interface{}) BizParam {
+	if bp.nilConditionSkip && (nil == val || 0 == len(val)) {
+		return bp
+	}
 	return bp.addCond(fn, notContain, pq.Array(val))
 }
 
 func (bp BizParam) BetweenAnd(fn string, from interface{}, to interface{}) BizParam {
+	if bp.nilConditionSkip && (nil == from || nil == to) {
+		return bp
+	}
 	val := between{
 		From: from,
 		To:   to,
@@ -619,9 +673,6 @@ func handleBracketCondition(bps []BizParam, cs ConnSymbol, flag bool, buffer byt
 }
 
 func (bp BizParam) addCond(fn string, symbol Symbol, val interface{}) BizParam {
-	if bp.nilConditionSkip && nil == val && (symbol != isNull && symbol != isNotNull && symbol != isEmpty && symbol != isNotEmpty) {
-		return bp
-	}
 	cond := paramCondition{
 		Colum:  fn,
 		Symbol: symbol,
