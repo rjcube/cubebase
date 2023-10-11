@@ -52,9 +52,9 @@ func CubeResponseErrorForServerErr(c *gin.Context, message string) {
 }
 
 type PageForm struct {
-	PageIndex int64 `json:"pageIndex" binding:"required" label:"分页页码"`
-	PageSize  int64 `json:"pageSize" binding:"required" label:"每页大小"`
-	//StartRow  int64 `json:"startRow"`
+	PageIndex int64       `json:"pageIndex" binding:"required" label:"分页页码"`
+	PageSize  int64       `json:"pageSize" binding:"required" label:"每页大小"`
+	Draw      interface{} `json:"draw"`
 }
 
 func (p *PageForm) GetPageIndex() int64 {
