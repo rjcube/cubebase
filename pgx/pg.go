@@ -2,6 +2,7 @@ package pgx
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -22,6 +23,11 @@ func Insert(c *gin.Context, po interface{}) (int64, error) {
 	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
 
 	sn, pfs := getStructDbFields(po)
+
+	m, err := handleInsertOrUpdateDate(po)
+	if nil != err {
+		return 0, err
+	}
 
 	var buffer bytes.Buffer
 	buffer.WriteString("INSERT INTO ")
@@ -56,7 +62,7 @@ func Insert(c *gin.Context, po interface{}) (int64, error) {
 	}
 	buffer.WriteString(") RETURNING id")
 
-	rows, err := cube.Db.NamedQuery(buffer.String(), po)
+	rows, err := cube.Db.NamedQuery(buffer.String(), m)
 	if err != nil {
 		fmt.Println(err.Error())
 		return 0, &CubePgExecError{Msg: "保存数据失败"}
@@ -74,11 +80,16 @@ func UpdateById(c *gin.Context, po interface{}) error {
 	userId := fmt.Sprintf("%d", userInfo.ID)
 	cube, _ := c.MustGet("cube").(*cubebase.CubeContext)
 
+	m, err := handleInsertOrUpdateDate(po)
+	if nil != err {
+		return err
+	}
+
 	var buffer bytes.Buffer
 	montageUpdate(&buffer, userId, po)
 	buffer.WriteString(" AND id = :id")
 
-	_, err := cube.Db.NamedExec(buffer.String(), po)
+	_, err = cube.Db.NamedExec(buffer.String(), m)
 	if err != nil {
 		fmt.Println(err.Error())
 		return &CubePgExecError{Msg: "修改数据失败"}
@@ -294,6 +305,24 @@ func QueryById[T interface{}](c *gin.Context, po T) (*T, error) {
 	}
 
 	return &t, nil
+}
+
+func handleInsertOrUpdateDate(po interface{}) (map[string]interface{}, error) {
+	poBytes, _ := json.Marshal(po)
+	var m map[string]interface{}
+	err := json.Unmarshal(poBytes, &m)
+	if err != nil {
+		return m, &CubePgExecError{Msg: "处理保存数据失败"}
+	}
+
+	for k, v := range m {
+		vt := reflect.TypeOf(v)
+		tName := vt.Name()
+		if tName == "Int64Array" || tName == "*Int64Array" || tName == "StringArray" || tName == "*StringArray" {
+			m[k] = pq.Array(v)
+		}
+	}
+	return m, nil
 }
 
 type BizParam struct {
