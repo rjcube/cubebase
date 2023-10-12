@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func ShouldBindWithBody(s any, c *gin.Context) error {
@@ -104,6 +105,7 @@ func shouldBindWith(s any, c *gin.Context, paramType string) error {
 			v = c.PostForm(fieldName)
 		}
 		tagBinding := field.Tag.Get("binding")
+		timeFormat := field.Tag.Get("time_format")
 		bindingMap := ConvertString2Map(tagBinding, ",", "=")
 		if "" == strings.TrimSpace(v) {
 			requiredMsg := field.Tag.Get("requiredMsg")
@@ -129,7 +131,7 @@ func shouldBindWith(s any, c *gin.Context, paramType string) error {
 				}
 			}
 
-			val, err := ConvertType(v, fileType)
+			val, err := ConvertType(v, fileType, timeFormat)
 			if nil != err {
 				return &BadRequestError{Msg: "参数" + name + "类型非法"}
 			}
@@ -231,7 +233,7 @@ func validNumber(val any, ml int64, name string, t string) error {
 	return nil
 }
 
-func ConvertSliceType(source string, typeName string) (interface{}, error) {
+func ConvertSliceType(source string, typeName string, tf string) (interface{}, error) {
 	var v []any
 	if strings.HasPrefix(source, "[") {
 		source = source[1:]
@@ -242,7 +244,7 @@ func ConvertSliceType(source string, typeName string) (interface{}, error) {
 	pairs := strings.Split(source, ",")
 	for _, pair := range pairs {
 		pair = strings.TrimSpace(pair)
-		nv, err := ConvertType(pair, typeName[2:])
+		nv, err := ConvertType(pair, typeName[2:], tf)
 		if nil != err {
 			return nil, err
 		}
@@ -251,9 +253,9 @@ func ConvertSliceType(source string, typeName string) (interface{}, error) {
 	return v, nil
 }
 
-func ConvertType(source string, typeName string) (interface{}, error) {
+func ConvertType(source string, typeName string, tf string) (interface{}, error) {
 	if strings.HasPrefix(typeName, "[]") {
-		return ConvertSliceType(source, typeName)
+		return ConvertSliceType(source, typeName, tf)
 	}
 	switch typeName {
 	case "int8":
@@ -308,7 +310,18 @@ func ConvertType(source string, typeName string) (interface{}, error) {
 		return source, nil
 	case "*string":
 		return source, nil
+	case "Time":
+		if "" == tf {
+			tf = "2006-01-02 15:04:05"
+		}
+		return time.Parse(tf, source)
+	case "*Time":
+		if "" == tf {
+			tf = "2006-01-02 15:04:05"
+		}
+		return time.Parse(tf, source)
 	}
+
 	return nil, &ConvertTypeError{Msg: "当前类型暂不支持转换"}
 }
 
