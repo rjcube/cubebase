@@ -347,7 +347,7 @@ func ConvertType(source string, typeName string, tf string) (interface{}, error)
 		return time.Parse(tf, source)
 	}
 
-	return nil, nil
+	return source, nil
 }
 
 func ConvertString2Map(tag string, split string, keySplit string) map[string]*string {
