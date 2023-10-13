@@ -377,42 +377,42 @@ func NewBizParam() BizParam {
 }
 
 func (bp BizParam) Equal(fn string, val interface{}) BizParam {
-	if bp.nilConditionSkip && nil == val {
+	if bp.nilConditionSkip && blankStringValSkip(val) {
 		return bp
 	}
 	return bp.addCond(fn, equal, val)
 }
 
 func (bp BizParam) NotEqual(fn string, val interface{}) BizParam {
-	if bp.nilConditionSkip && nil == val {
+	if bp.nilConditionSkip && blankStringValSkip(val) {
 		return bp
 	}
 	return bp.addCond(fn, notEqual, val)
 }
 
 func (bp BizParam) GreaterThan(fn string, val interface{}) BizParam {
-	if bp.nilConditionSkip && nil == val {
+	if bp.nilConditionSkip && blankStringValSkip(val) {
 		return bp
 	}
 	return bp.addCond(fn, greaterThan, val)
 }
 
 func (bp BizParam) GreaterThanOrEqual(fn string, val interface{}) BizParam {
-	if bp.nilConditionSkip && nil == val {
+	if bp.nilConditionSkip && blankStringValSkip(val) {
 		return bp
 	}
 	return bp.addCond(fn, greaterThanOrEqual, val)
 }
 
 func (bp BizParam) LessThan(fn string, val interface{}) BizParam {
-	if bp.nilConditionSkip && nil == val {
+	if bp.nilConditionSkip && blankStringValSkip(val) {
 		return bp
 	}
 	return bp.addCond(fn, lessThan, val)
 }
 
 func (bp BizParam) LessThanOrEqual(fn string, val interface{}) BizParam {
-	if bp.nilConditionSkip && nil == val {
+	if bp.nilConditionSkip && blankStringValSkip(val) {
 		return bp
 	}
 	return bp.addCond(fn, lessThanOrEqual, val)
@@ -512,7 +512,7 @@ func (bp BizParam) NotContain(fn string, val []interface{}) BizParam {
 }
 
 func (bp BizParam) BetweenAnd(fn string, from interface{}, to interface{}) BizParam {
-	if bp.nilConditionSkip && (nil == from || nil == to) {
+	if bp.nilConditionSkip && (blankStringValSkip(from) || blankStringValSkip(to)) {
 		return bp
 	}
 	val := between{
@@ -547,6 +547,17 @@ func (bp BizParam) OrderBy(fn string, sort Sort) BizParam {
 	}
 	bp.orderBys = append(bp.orderBys, orderBy)
 	return bp
+}
+
+func blankStringValSkip(val interface{}) bool {
+	if nil == val {
+		return true
+	}
+	s, ok := val.(string)
+	if ok && strings.TrimSpace(s) == "" {
+		return true
+	}
+	return false
 }
 
 func montageUpdate(buffer *bytes.Buffer, userId string, po interface{}) {
