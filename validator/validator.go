@@ -87,93 +87,118 @@ func ShouldBindWithForm(s any, c *gin.Context) error {
 func shouldBindWith(s any, c *gin.Context, paramType string) error {
 	t := reflect.TypeOf(s).Elem()
 	m := make(map[string]interface{})
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fileType := field.Type.String()
-		fieldName := field.Tag.Get("json")
-		if "" == fieldName {
-			fieldName = field.Name
-		}
-		name := field.Tag.Get("label")
-		if "" == name {
-			name = fieldName
-		}
-		var v string
-		if "Query" == paramType {
-			v = c.Query(fieldName)
-		} else {
-			v = c.PostForm(fieldName)
-		}
-		tagBinding := field.Tag.Get("binding")
-		timeFormat := field.Tag.Get("time_format")
-		bindingMap := ConvertString2Map(tagBinding, ",", "=")
-		if "" == strings.TrimSpace(v) {
-			requiredMsg := field.Tag.Get("requiredMsg")
-			required := bindingMap["required"]
-			if required != nil && "required" == *required {
-				if "" == requiredMsg {
-					rm := "参数" + name + "必填"
-					requiredMsg = rm
-				}
-				return &BadRequestError{Msg: requiredMsg}
-			}
-		} else {
-			regularMsg := field.Tag.Get("regularMsg")
-			regular := bindingMap["regexp"]
-			if nil != regular && strings.TrimSpace(*regular) != "" {
-				re := regexp.MustCompile(*regular)
-				if !re.MatchString(v) {
-					if "" == regularMsg && strings.TrimSpace(regularMsg) != "" {
-						rm := "参数" + name + "格式非法"
-						regularMsg = rm
-					}
-					return &BadRequestError{Msg: regularMsg}
-				}
-			}
-
-			val, err := ConvertType(v, fileType, timeFormat)
-			if nil != err {
-				return &BadRequestError{Msg: "参数" + name + "类型非法"}
-			}
-
-			minLength := bindingMap["min"]
-			if nil != minLength && strings.TrimSpace(*minLength) != "" {
-				ml, _ := strconv.ParseInt(*minLength, 10, 64)
-				if "string" == fileType || "*string" == fileType {
-					if int64(len(v)) < ml {
-						return &BadRequestError{Msg: "参数" + name + "长度过短"}
-					}
-				} else {
-					minErr := ValidNumberByMin(val, ml, name)
-					if nil != minErr {
-						return minErr
-					}
-				}
-			}
-
-			maxLength := bindingMap["max"]
-			if nil != maxLength && strings.TrimSpace(*maxLength) != "" {
-				ml, _ := strconv.ParseInt(*maxLength, 10, 64)
-				if "string" == fileType || "*string" == fileType {
-					if int64(len(v)) > ml {
-						rm := "参数" + name + "长度超长"
-						regularMsg = rm
-						return &BadRequestError{Msg: regularMsg}
-					}
-				} else {
-					maxErr := ValidNumberByMax(val, ml, name)
-					if nil != maxErr {
-						return maxErr
-					}
-				}
-			}
-			m[fieldName] = val
-		}
+	err := handleNestFieldVal(t, c, paramType, m)
+	if err != nil {
+		return err
 	}
 	bytes, _ := json.Marshal(m)
-	err := json.Unmarshal(bytes, s)
+	err = json.Unmarshal(bytes, s)
 	if err != nil {
 		return &BadRequestError{Msg: "请求参数非法，转换错误"}
+	}
+	return nil
+}
+
+func handleNestFieldVal(t reflect.Type, c *gin.Context, paramType string, m map[string]interface{}) error {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if field.Anonymous {
+			embeddedType := field.Type
+			err := handleNestFieldVal(embeddedType, c, paramType, m)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := handleFieldVal(field, c, paramType, m)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func handleFieldVal(field reflect.StructField, c *gin.Context, paramType string, m map[string]interface{}) error {
+	fileType := field.Type.String()
+	fieldName := field.Tag.Get("json")
+	if "" == fieldName {
+		fieldName = field.Name
+	}
+	name := field.Tag.Get("label")
+	if "" == name {
+		name = fieldName
+	}
+	var v string
+
+	if "Query" == paramType {
+		v = c.Query(fieldName)
+	} else {
+		v = c.PostForm(fieldName)
+	}
+	tagBinding := field.Tag.Get("binding")
+	timeFormat := field.Tag.Get("time_format")
+	bindingMap := ConvertString2Map(tagBinding, ",", "=")
+	if "" == strings.TrimSpace(v) {
+		requiredMsg := field.Tag.Get("requiredMsg")
+		required := bindingMap["required"]
+		if required != nil && "required" == *required {
+			if "" == requiredMsg {
+				rm := "参数" + name + "必填"
+				requiredMsg = rm
+			}
+			return &BadRequestError{Msg: requiredMsg}
+		}
+	} else {
+		regularMsg := field.Tag.Get("regularMsg")
+		regular := bindingMap["regexp"]
+		if nil != regular && strings.TrimSpace(*regular) != "" {
+			re := regexp.MustCompile(*regular)
+			if !re.MatchString(v) {
+				if "" == regularMsg && strings.TrimSpace(regularMsg) != "" {
+					rm := "参数" + name + "格式非法"
+					regularMsg = rm
+				}
+				return &BadRequestError{Msg: regularMsg}
+			}
+		}
+
+		val, err := ConvertType(v, fileType, timeFormat)
+		if nil != err {
+			return &BadRequestError{Msg: "参数" + name + "类型非法"}
+		}
+
+		minLength := bindingMap["min"]
+		if nil != minLength && strings.TrimSpace(*minLength) != "" {
+			ml, _ := strconv.ParseInt(*minLength, 10, 64)
+			if "string" == fileType || "*string" == fileType {
+				if int64(len(v)) < ml {
+					return &BadRequestError{Msg: "参数" + name + "长度过短"}
+				}
+			} else {
+				minErr := ValidNumberByMin(val, ml, name)
+				if nil != minErr {
+					return minErr
+				}
+			}
+		}
+
+		maxLength := bindingMap["max"]
+		if nil != maxLength && strings.TrimSpace(*maxLength) != "" {
+			ml, _ := strconv.ParseInt(*maxLength, 10, 64)
+			if "string" == fileType || "*string" == fileType {
+				if int64(len(v)) > ml {
+					rm := "参数" + name + "长度超长"
+					regularMsg = rm
+					return &BadRequestError{Msg: regularMsg}
+				}
+			} else {
+				maxErr := ValidNumberByMax(val, ml, name)
+				if nil != maxErr {
+					return maxErr
+				}
+			}
+		}
+		m[fieldName] = val
 	}
 	return nil
 }
