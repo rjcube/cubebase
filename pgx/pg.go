@@ -556,6 +556,11 @@ func blankStringValSkip(val interface{}) bool {
 	s, ok := val.(string)
 	if ok && strings.TrimSpace(s) == "" {
 		return true
+	} else {
+		sp, ok := val.(*string)
+		if ok && (nil == sp || strings.TrimSpace(*sp) == "") {
+			return true
+		}
 	}
 	return false
 }
