@@ -553,13 +553,16 @@ func blankStringValSkip(val interface{}) bool {
 	if nil == val {
 		return true
 	}
-	s, ok := val.(string)
-	if ok && strings.TrimSpace(s) == "" {
-		return true
-	} else {
+	vt := reflect.TypeOf(val).Name()
+	if "string" == vt {
+		s, ok := val.(string)
+		if ok && strings.TrimSpace(s) == "" {
+			return true
+		}
+	} else if "*string" == vt {
 		sp, ok := val.(*string)
 		if ok && (nil == sp || strings.TrimSpace(*sp) == "") {
-			return true
+
 		}
 	}
 	return false
