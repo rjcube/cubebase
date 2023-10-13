@@ -13,7 +13,7 @@ type Response struct {
 }
 
 type PageVO struct {
-	List  []interface{} `json:"data"`
+	Rows  []interface{} `json:"rows"`
 	Draw  interface{}   `json:"draw"`
 	Total int64         `json:"total"`
 }
